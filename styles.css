@@ -431,25 +431,21 @@ html[data-theme="light"] .icon-btn .icon-moon { display: block; }
 }
 .footer a { color: var(--text-soft); }
 
+/* Non-modal: pinned to the bottom, never covers or intercepts taps on the
+ * rest of the page. Only the card itself has pointer-events: auto so the
+ * user can keep browsing menus while the install hint is visible. */
 .ios-install {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 100;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
   padding: 12px;
   padding-bottom: calc(12px + var(--safe-bottom));
+  display: flex;
+  justify-content: center;
   pointer-events: none;
 }
-.ios-backdrop {
-  position: absolute; inset: 0;
-  background: rgba(0, 0, 0, 0.28);
-  opacity: 0;
-  transition: opacity 180ms ease;
-  pointer-events: auto;
-}
-.ios-install:not([hidden]) .ios-backdrop { opacity: 1; }
 
 .ios-install-card {
   position: relative;

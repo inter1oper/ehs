@@ -426,14 +426,11 @@
       } catch (_) { /* private-mode: just hide for this session */ }
     };
 
-    // Use event delegation on the whole overlay so the tap target is always
-    // the element the user sees — never a nested <svg>/<use> that swallows
-    // the event. closest() walks up from the true target to the nearest
-    // dismiss trigger.
+    // Use event delegation on the card so the tap target is always the
+    // element the user sees — never a nested <svg>/<use> that swallows the
+    // event. closest() walks up from the true target to the nearest button.
     const onTap = (ev) => {
-      const t = ev.target.closest(
-        ".ios-close, .ios-dismiss, .ios-backdrop",
-      );
+      const t = ev.target.closest(".ios-close, .ios-dismiss");
       if (!t) return;
       ev.preventDefault();
       dismiss();
