@@ -31,7 +31,7 @@
   const STORAGE_PREFIX = "mealmenu:";
 
   const state = {
-    week: null, // { breakfast: parsedSheet, lunch: ..., dinner: ... }
+    week: {}, // { breakfast: parsedSheet, lunch: ..., dinner: ... }
     selectedDateKey: null,
     days: [], // unified list of {dateKey, weekday, label, isToday}
     searchQuery: "",
@@ -224,12 +224,20 @@
   }
 
   /* ------------------------------- Fetching ------------------------------ */
-  async function fetchSheet(meal) {
+  // Returns { text, fromCache }. If a cached copy exists (within TTL) it's
+  // returned immediately; the caller can still request a network refresh via
+  // `fetchSheetNetwork`.
+  function fetchSheetCached(meal) {
+    const cached = readCache(`${STORAGE_PREFIX}csv:${meal}`, CSV_TTL_MS);
+    return cached ? { text: cached, fromCache: true } : null;
+  }
+
+  async function fetchSheetNetwork(meal) {
     const cacheKey = `${STORAGE_PREFIX}csv:${meal}`;
-    const cached = readCache(cacheKey, CSV_TTL_MS);
-    if (cached) return cached;
     const url = `${SHEETS[meal].pubBase}/pub?output=csv`;
-    const resp = await fetch(url, { cache: "no-store" });
+    // Default browser cache is fine — the CSV endpoint advertises
+    // `cache-control: private, max-age=300`, which skips redundant reloads.
+    const resp = await fetch(url);
     if (!resp.ok) throw new Error(`Failed to load ${meal} (${resp.status})`);
     const text = await resp.text();
     writeCache(cacheKey, text);
@@ -292,6 +300,26 @@
     return Array.from(new Set(list.map((s) => s.trim()).filter(Boolean)));
   }
 
+  // Tiny concurrency limiter — keeps the browser from opening dozens of
+  // parallel Wikipedia requests on a large screen.
+  const photoQueue = { active: 0, max: 4, pending: [] };
+  function runThrottled(fn) {
+    return new Promise((resolve) => {
+      const task = async () => {
+        photoQueue.active++;
+        try {
+          resolve(await fn());
+        } finally {
+          photoQueue.active--;
+          const next = photoQueue.pending.shift();
+          if (next) next();
+        }
+      };
+      if (photoQueue.active < photoQueue.max) task();
+      else photoQueue.pending.push(task);
+    });
+  }
+
   async function wikipediaImageFor(query) {
     if (!query) return null;
     const url =
@@ -309,17 +337,19 @@
         gsrnamespace: "0",
         origin: "*",
       }).toString();
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) return null;
-      const data = await resp.json();
-      const pages = data && data.query && data.query.pages;
-      if (!pages || !pages.length) return null;
-      const thumb = pages[0].thumbnail && pages[0].thumbnail.source;
-      return thumb || null;
-    } catch (_) {
-      return null;
-    }
+    return runThrottled(async () => {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        const pages = data && data.query && data.query.pages;
+        if (!pages || !pages.length) return null;
+        const thumb = pages[0].thumbnail && pages[0].thumbnail.source;
+        return thumb || null;
+      } catch (_) {
+        return null;
+      }
+    });
   }
 
   /* ----------------------------- Theme toggle ---------------------------- */
@@ -369,22 +399,52 @@
 
   /* ----------------------------- iOS install ----------------------------- */
   function maybeShowIosInstall() {
-    const ua = navigator.userAgent;
-    const isIOS = /iPhone|iPod/.test(ua) ||
-      (/iPad/.test(ua) ||
-        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+    const ua = navigator.userAgent || "";
+    const isIOS =
+      /iPhone|iPod/.test(ua) ||
+      /iPad/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       window.navigator.standalone === true;
     const dismissed = localStorage.getItem(`${STORAGE_PREFIX}iosDismissed`);
-    if (isIOS && !isStandalone && !dismissed) {
-      const el = $("#ios-install");
-      el.hidden = false;
-      $(".ios-close", el).addEventListener("click", () => {
-        el.hidden = true;
-        localStorage.setItem(`${STORAGE_PREFIX}iosDismissed`, "1");
-      });
+    const el = $("#ios-install");
+    if (!el) return;
+    if (!isIOS || isStandalone || dismissed) {
+      el.hidden = true;
+      return;
     }
+    el.hidden = false;
+
+    const dismiss = () => {
+      el.hidden = true;
+      localStorage.setItem(`${STORAGE_PREFIX}iosDismissed`, "1");
+    };
+
+    // Tap the X, the "Got it" button, the backdrop, or press Escape.
+    const xBtn = $(".ios-close", el);
+    const okBtn = $(".ios-dismiss", el);
+    const backdrop = $(".ios-backdrop", el);
+    const handle = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dismiss();
+    };
+    if (xBtn) {
+      xBtn.addEventListener("click", handle);
+      xBtn.addEventListener("touchend", handle, { passive: false });
+    }
+    if (okBtn) {
+      okBtn.addEventListener("click", handle);
+      okBtn.addEventListener("touchend", handle, { passive: false });
+    }
+    if (backdrop) {
+      backdrop.addEventListener("click", handle);
+      backdrop.addEventListener("touchend", handle, { passive: false });
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !el.hidden) dismiss();
+    });
   }
 
   /* -------------------------------- Render ------------------------------- */
@@ -609,41 +669,78 @@
   /* ---------------------------------- Boot ------------------------------- */
   async function load(force = false) {
     const root = $("#content");
-    root.innerHTML = `<div class="loader"><div class="spinner"></div><p>Fetching today’s menu…</p></div>`;
     if (force) {
       for (const m of Object.keys(SHEETS)) {
         localStorage.removeItem(`${STORAGE_PREFIX}csv:${m}`);
       }
     }
+
+    // 1. Render instantly from cache when we have one (stale-while-revalidate).
+    let renderedFromCache = false;
+    if (!force) {
+      const cached = {};
+      let have = 0;
+      for (const m of Object.keys(SHEETS)) {
+        const c = fetchSheetCached(m);
+        if (c) {
+          cached[m] = parseSheet(parseCSV(c.text));
+          have++;
+        }
+      }
+      if (have) {
+        applyWeek(cached);
+        renderedFromCache = true;
+      }
+    }
+
+    if (!renderedFromCache) {
+      root.innerHTML = `<div class="loader"><div class="spinner"></div><p>Fetching today's menu…</p></div>`;
+    }
+
+    // 2. Refresh over the network in parallel; swap each sheet in as it lands.
     try {
-      const entries = await Promise.all(
-        Object.keys(SHEETS).map(async (m) => {
-          try {
-            const text = await fetchSheet(m);
-            return [m, parseSheet(parseCSV(text))];
-          } catch (e) {
-            console.warn("Failed to load", m, e);
-            return [m, null];
+      const pending = Object.keys(SHEETS).map(async (m) => {
+        try {
+          const text = await fetchSheetNetwork(m);
+          state.week[m] = parseSheet(parseCSV(text));
+          state.days = buildDayList();
+          if (!state.selectedDateKey) {
+            state.selectedDateKey = pickDefaultDay();
           }
-        }),
-      );
-      state.week = Object.fromEntries(entries);
-      state.days = buildDayList();
+          renderDayTabs();
+          renderContent();
+        } catch (e) {
+          console.warn("Failed to load", m, e);
+          if (!state.week[m]) state.week[m] = null;
+        }
+      });
+      await Promise.all(pending);
       if (!state.days.length) {
         root.innerHTML = `<div class="error"><h2>No data found.</h2><p>The published menu sheets are empty or unreachable.</p></div>`;
-        return;
       }
-      const todayKey = dateKey(new Date());
-      const today = state.days.find((d) => d.dateKey === todayKey);
-      const fallback = state.days.find((d) => !d.isPast) || state.days[0];
-      state.selectedDateKey = (today || fallback).dateKey;
-      renderDayTabs();
-      renderContent();
     } catch (err) {
-      root.innerHTML = `<div class="error"><h2>Couldn't load menu.</h2><p>${escapeHtml(
-        err.message || String(err),
-      )}</p></div>`;
+      if (!renderedFromCache) {
+        root.innerHTML = `<div class="error"><h2>Couldn't load menu.</h2><p>${escapeHtml(
+          err.message || String(err),
+        )}</p></div>`;
+      }
     }
+  }
+
+  function applyWeek(week) {
+    state.week = Object.assign({}, state.week, week);
+    state.days = buildDayList();
+    if (!state.days.length) return;
+    if (!state.selectedDateKey) state.selectedDateKey = pickDefaultDay();
+    renderDayTabs();
+    renderContent();
+  }
+
+  function pickDefaultDay() {
+    const todayKey = dateKey(new Date());
+    const today = state.days.find((d) => d.dateKey === todayKey);
+    const fallback = state.days.find((d) => !d.isPast) || state.days[0];
+    return (today || fallback).dateKey;
   }
 
   function wireUp() {

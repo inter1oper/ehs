@@ -12,10 +12,51 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icon-180.png" />
+    <!-- Warm up TLS to the origins we'll hit, so the first paint is fast. -->
+    <link rel="preconnect" href="https://docs.google.com" crossorigin />
+    <link rel="preconnect" href="https://doc-14-cc-sheets.googleusercontent.com" crossorigin />
+    <link rel="dns-prefetch" href="https://sheets.googleusercontent.com" />
+    <link rel="preconnect" href="https://en.wikipedia.org" crossorigin />
+    <link rel="preconnect" href="https://upload.wikimedia.org" crossorigin />
+    <link rel="preload" href="./app.js" as="script" />
+    <link rel="preload" href="./styles.css" as="style" />
     <link rel="stylesheet" href="./styles.css" />
     <title>Meal Menu</title>
   </head>
   <body>
+    <!-- Reusable Heroicons v2 sprites (MIT licensed, tailwindlabs/heroicons). -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>
+        </symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+        </symbol>
+        <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+        </symbol>
+        <symbol id="i-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>
+        </symbol>
+        <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4.5v15m7.5-7.5h-15"/>
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 18 18 6M6 6l12 12"/>
+        </symbol>
+        <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/>
+        </symbol>
+      </defs>
+    </svg>
+
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
@@ -27,21 +68,22 @@
         </div>
         <div class="topbar-actions">
           <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
-            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.66-5.66l1.41-1.41M4.93 19.07l1.41-1.41m0-11.32L4.93 4.93m14.14 14.14l-1.41-1.41M12 7a5 5 0 100 10 5 5 0 000-10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" fill="currentColor"/></svg>
+            <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+            <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
           </button>
           <button id="refresh-btn" class="icon-btn" type="button" aria-label="Refresh menu" title="Refresh menu">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0114-5.3L20 5v6h-6l2.5-2.5A6 6 0 106 12H4zm16 0a8 8 0 01-14 5.3L4 19v-6h6l-2.5 2.5A6 6 0 0018 12h2z" fill="currentColor"/></svg>
+            <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
           </button>
         </div>
       </div>
       <div class="search-wrap">
         <label class="visually-hidden" for="search">Search meals</label>
         <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 104.47 10.03l4.25 4.25 1.41-1.41-4.25-4.25A6 6 0 0010 4zm0 2a4 4 0 110 8 4 4 0 010-8z" fill="currentColor"/></svg>
-          <input id="search" type="search" placeholder="Search meals or look up a food&hellip;" autocomplete="off" />
+          <svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="search" type="search" placeholder="Search meals or look up a food&hellip;" autocomplete="off" enterkeyhint="search" />
           <button id="google-search-btn" class="search-action" type="button" title="Search Google Images">
-            Images
+            <svg class="icon" aria-hidden="true"><use href="#i-photo"/></svg>
+            <span>Images</span>
           </button>
         </div>
       </div>
@@ -56,32 +98,36 @@
     </main>
 
     <div id="ios-install" class="ios-install" hidden>
-      <div class="ios-install-card">
-        <button class="ios-close" type="button" aria-label="Dismiss">&times;</button>
-        <div class="ios-title">Install as an app</div>
-        <p>
-          Add Meal Menu to your iPhone Home Screen for a full-screen, app-like
-          experience.
+      <div class="ios-backdrop" aria-hidden="true"></div>
+      <div class="ios-install-card" role="dialog" aria-labelledby="ios-title" aria-describedby="ios-desc">
+        <button class="ios-close" type="button" aria-label="Close install tip">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+        <div class="ios-title" id="ios-title">Install as an app</div>
+        <p id="ios-desc">
+          Add Meal Menu to your iPhone Home Screen for a full-screen, app-like experience.
         </p>
         <ol class="ios-steps">
           <li>
             Tap the <strong>Share</strong>
-            <svg viewBox="0 0 24 24" class="ios-icon" aria-hidden="true"><path d="M12 3l4 4-1.4 1.4L13 6.8V15h-2V6.8L9.4 8.4 8 7zM5 12h2v7h10v-7h2v9H5z" fill="currentColor"/></svg>
+            <svg class="icon ios-icon" aria-hidden="true"><use href="#i-share"/></svg>
             button at the bottom of Safari.
           </li>
           <li>
             Scroll and tap <strong>Add to Home Screen</strong>
-            <svg viewBox="0 0 24 24" class="ios-icon" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" fill="currentColor"/></svg>.
+            <svg class="icon ios-icon" aria-hidden="true"><use href="#i-plus"/></svg>.
           </li>
           <li>Tap <strong>Add</strong> in the top right.</li>
         </ol>
+        <button class="ios-dismiss" type="button">Got it</button>
       </div>
     </div>
 
     <footer class="footer">
       <p>
-        Data from published EHS Google Sheets &middot; Photos via Wikipedia &middot;
-        <a id="open-source" href="#" target="_blank" rel="noopener">Source sheets</a>
+        Menu data from the published EHS sheets &middot; photos via Wikipedia &middot;
+        icons by <a href="https://github.com/tailwindlabs/heroicons" target="_blank" rel="noopener">Heroicons</a> &middot;
+        <a id="open-source" href="#" target="_blank" rel="noopener">source sheets</a>
       </p>
     </footer>
 
@@ -99,18 +145,21 @@
       <article class="card">
         <div class="card-photo">
           <div class="card-photo-bg" aria-hidden="true"></div>
+          <div class="card-photo-fallback" aria-hidden="true">
+            <svg class="icon" aria-hidden="true"><use href="#i-photo"/></svg>
+          </div>
           <span class="card-category"></span>
         </div>
         <div class="card-body">
           <h3 class="card-name"></h3>
           <div class="card-actions">
             <a class="link-btn google-link" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 104.47 10.03l4.25 4.25 1.41-1.41-4.25-4.25A6 6 0 0010 4zm0 2a4 4 0 110 8 4 4 0 010-8z" fill="currentColor"/></svg>
-              Google
+              <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+              <span>Google</span>
             </a>
             <button class="link-btn refetch-btn" type="button" title="Try a different photo">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0114-5.3L20 5v6h-6l2.5-2.5A6 6 0 106 12H4z" fill="currentColor"/></svg>
-              Photo
+              <svg class="icon" aria-hidden="true"><use href="#i-photo"/></svg>
+              <span>Photo</span>
             </button>
           </div>
         </div>
