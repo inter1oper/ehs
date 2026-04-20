@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fffaf3" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1115" />
+    <meta name="description" content="Today's breakfast, lunch, and dinner menu with photos and quick image search." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Meal Menu" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon-180.png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>Meal Menu</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">&#127869;&#65039;</span>
+          <div class="brand-text">
+            <h1>Meal Menu</h1>
+            <p id="today-label">Loading&hellip;</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.66-5.66l1.41-1.41M4.93 19.07l1.41-1.41m0-11.32L4.93 4.93m14.14 14.14l-1.41-1.41M12 7a5 5 0 100 10 5 5 0 000-10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" fill="currentColor"/></svg>
+          </button>
+          <button id="refresh-btn" class="icon-btn" type="button" aria-label="Refresh menu" title="Refresh menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0114-5.3L20 5v6h-6l2.5-2.5A6 6 0 106 12H4zm16 0a8 8 0 01-14 5.3L4 19v-6h6l-2.5 2.5A6 6 0 0018 12h2z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <label class="visually-hidden" for="search">Search meals</label>
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 104.47 10.03l4.25 4.25 1.41-1.41-4.25-4.25A6 6 0 0010 4zm0 2a4 4 0 110 8 4 4 0 010-8z" fill="currentColor"/></svg>
+          <input id="search" type="search" placeholder="Search meals or look up a food&hellip;" autocomplete="off" />
+          <button id="google-search-btn" class="search-action" type="button" title="Search Google Images">
+            Images
+          </button>
+        </div>
+      </div>
+      <nav class="day-tabs" id="day-tabs" aria-label="Choose a day"></nav>
+    </header>
+
+    <main id="content" class="content" aria-live="polite">
+      <div class="loader" id="loader">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Fetching today&rsquo;s menu&hellip;</p>
+      </div>
+    </main>
+
+    <div id="ios-install" class="ios-install" hidden>
+      <div class="ios-install-card">
+        <button class="ios-close" type="button" aria-label="Dismiss">&times;</button>
+        <div class="ios-title">Install as an app</div>
+        <p>
+          Add Meal Menu to your iPhone Home Screen for a full-screen, app-like
+          experience.
+        </p>
+        <ol class="ios-steps">
+          <li>
+            Tap the <strong>Share</strong>
+            <svg viewBox="0 0 24 24" class="ios-icon" aria-hidden="true"><path d="M12 3l4 4-1.4 1.4L13 6.8V15h-2V6.8L9.4 8.4 8 7zM5 12h2v7h10v-7h2v9H5z" fill="currentColor"/></svg>
+            button at the bottom of Safari.
+          </li>
+          <li>
+            Scroll and tap <strong>Add to Home Screen</strong>
+            <svg viewBox="0 0 24 24" class="ios-icon" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" fill="currentColor"/></svg>.
+          </li>
+          <li>Tap <strong>Add</strong> in the top right.</li>
+        </ol>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>
+        Data from published EHS Google Sheets &middot; Photos via Wikipedia &middot;
+        <a id="open-source" href="#" target="_blank" rel="noopener">Source sheets</a>
+      </p>
+    </footer>
+
+    <template id="tpl-meal-section">
+      <section class="meal-section">
+        <header class="meal-header">
+          <h2 class="meal-title"></h2>
+          <span class="meal-count"></span>
+        </header>
+        <div class="meal-grid"></div>
+      </section>
+    </template>
+
+    <template id="tpl-meal-card">
+      <article class="card">
+        <div class="card-photo">
+          <div class="card-photo-bg" aria-hidden="true"></div>
+          <span class="card-category"></span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-name"></h3>
+          <div class="card-actions">
+            <a class="link-btn google-link" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 104.47 10.03l4.25 4.25 1.41-1.41-4.25-4.25A6 6 0 0010 4zm0 2a4 4 0 110 8 4 4 0 010-8z" fill="currentColor"/></svg>
+              Google
+            </a>
+            <button class="link-btn refetch-btn" type="button" title="Try a different photo">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0114-5.3L20 5v6h-6l2.5-2.5A6 6 0 106 12H4z" fill="currentColor"/></svg>
+              Photo
+            </button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
