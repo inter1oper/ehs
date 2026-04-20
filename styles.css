@@ -488,8 +488,9 @@ html[data-theme="light"] .icon-btn .icon-moon { display: block; }
   align-items: center;
   justify-content: center;
   touch-action: manipulation;
-  -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+  -webkit-tap-highlight-color: rgba(0,0,0,0.12);
   transition: background 120ms ease, color 120ms ease;
+  z-index: 2;
 }
 .ios-close:hover,
 .ios-close:active {
@@ -497,6 +498,9 @@ html[data-theme="light"] .icon-btn .icon-moon { display: block; }
   color: var(--text);
 }
 .ios-close .icon { width: 22px; height: 22px; }
+/* The SVG must never swallow the tap — always route the click to the button. */
+.ios-close > *,
+.ios-dismiss > * { pointer-events: none; }
 
 .ios-title {
   font-weight: 700;

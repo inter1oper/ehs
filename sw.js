@@ -2,7 +2,7 @@
  * Caches the static shell so the PWA opens instantly and works briefly
  * offline; CSV menu data is always re-fetched (network-first).
  */
-const CACHE = "mealmenu-shell-v3";
+const CACHE = "mealmenu-shell-v4";
 const SHELL = [
   "./",
   "./index.html",

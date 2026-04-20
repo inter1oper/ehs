@@ -407,7 +407,10 @@
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       window.navigator.standalone === true;
-    const dismissed = localStorage.getItem(`${STORAGE_PREFIX}iosDismissed`);
+    let dismissed = false;
+    try {
+      dismissed = !!localStorage.getItem(`${STORAGE_PREFIX}iosDismissed`);
+    } catch (_) { /* private-mode storage: treat as not dismissed */ }
     const el = $("#ios-install");
     if (!el) return;
     if (!isIOS || isStandalone || dismissed) {
@@ -418,30 +421,25 @@
 
     const dismiss = () => {
       el.hidden = true;
-      localStorage.setItem(`${STORAGE_PREFIX}iosDismissed`, "1");
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}iosDismissed`, "1");
+      } catch (_) { /* private-mode: just hide for this session */ }
     };
 
-    // Tap the X, the "Got it" button, the backdrop, or press Escape.
-    const xBtn = $(".ios-close", el);
-    const okBtn = $(".ios-dismiss", el);
-    const backdrop = $(".ios-backdrop", el);
-    const handle = (ev) => {
+    // Use event delegation on the whole overlay so the tap target is always
+    // the element the user sees — never a nested <svg>/<use> that swallows
+    // the event. closest() walks up from the true target to the nearest
+    // dismiss trigger.
+    const onTap = (ev) => {
+      const t = ev.target.closest(
+        ".ios-close, .ios-dismiss, .ios-backdrop",
+      );
+      if (!t) return;
       ev.preventDefault();
-      ev.stopPropagation();
       dismiss();
     };
-    if (xBtn) {
-      xBtn.addEventListener("click", handle);
-      xBtn.addEventListener("touchend", handle, { passive: false });
-    }
-    if (okBtn) {
-      okBtn.addEventListener("click", handle);
-      okBtn.addEventListener("touchend", handle, { passive: false });
-    }
-    if (backdrop) {
-      backdrop.addEventListener("click", handle);
-      backdrop.addEventListener("touchend", handle, { passive: false });
-    }
+    el.addEventListener("click", onTap);
+
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && !el.hidden) dismiss();
     });
