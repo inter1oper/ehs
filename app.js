@@ -701,12 +701,7 @@
         try {
           const text = await fetchSheetNetwork(m);
           state.week[m] = parseSheet(parseCSV(text));
-          state.days = buildDayList();
-          if (!state.selectedDateKey) {
-            state.selectedDateKey = pickDefaultDay();
-          }
-          renderDayTabs();
-          renderContent();
+          rerender();
         } catch (e) {
           console.warn("Failed to load", m, e);
           if (!state.week[m]) state.week[m] = null;
@@ -727,9 +722,20 @@
 
   function applyWeek(week) {
     state.week = Object.assign({}, state.week, week);
+    rerender();
+  }
+
+  // Rebuild state.days from the current state.week, validate the selected
+  // day against the fresh list (re-picking today/default if the previously
+  // selected key is no longer present — e.g. stale cache rolled forward a
+  // week), then repaint tabs and content.
+  function rerender() {
     state.days = buildDayList();
     if (!state.days.length) return;
-    if (!state.selectedDateKey) state.selectedDateKey = pickDefaultDay();
+    const stillValid = state.days.some(
+      (d) => d.dateKey === state.selectedDateKey,
+    );
+    if (!stillValid) state.selectedDateKey = pickDefaultDay();
     renderDayTabs();
     renderContent();
   }
