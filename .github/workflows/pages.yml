@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/meal-menu-web-app-DEXeH
   workflow_dispatch:
 
 permissions:
